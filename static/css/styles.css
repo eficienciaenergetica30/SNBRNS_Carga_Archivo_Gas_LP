@@ -1,0 +1,41 @@
+body {
+    background-color: #f8fafb;
+}
+
+h1 {
+    font-weight: 600;
+}
+
+.table {
+    border-color: #e9ecef;
+}
+
+.table thead th {
+    background: #ffffff;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    --bs-table-bg: #fcfdff;
+}
+
+.table td,
+.table th {
+    border-color: #dee2e6;
+}
+
+.table-frame {
+    max-width: 2000px;
+    margin: 0 auto;
+}
+
+.fixed-send-button {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+    padding: .9rem 2rem;
+    font-size: 1.2rem;
+    min-width: 140px;
+    z-index: 1040;
+}

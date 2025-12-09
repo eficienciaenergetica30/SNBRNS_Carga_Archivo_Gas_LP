@@ -1,0 +1,10 @@
+applications:
+  - name: carga-archivo-facturacion-gas
+    memory: 256M
+    disk_quota: 512M
+    buildpacks:
+      - python_buildpack
+    random-route: true
+    env:
+      FLASK_ENV: production
+

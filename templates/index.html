@@ -1,0 +1,122 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="table-frame card">
+  <div class="card-body">
+    <h1 class="h5 mb-3">Reporte Gas LP Input</h1>
+
+    <form id="uploadForm" action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" class="mb-3">
+      <div class="mb-3">
+        <label for="formFile" class="form-label">Selecciona tu archivo Excel (.xlsx)</label>
+        <input class="form-control" type="file" id="formFile" name="file" accept=".xlsx">
+      </div>
+    </form>
+
+    {% if error_message %}
+    <div class="alert alert-warning" role="alert">{{ error_message }}</div>
+    {% endif %}
+
+    {% if headers and rows %}
+    <div class="table-responsive">
+      <table class="table table-sm table-striped table-bordered align-middle">
+        <thead>
+          <tr>
+            {% for h in headers %}
+            <th scope="col">{{ h }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            {% for c in row %}
+            <td>{{ c }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <button class="btn btn-primary fixed-send-button" id="btnEnviar">Enviar</button>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var errorMessage = {{ error_message| tojson }};
+    if (errorMessage) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Archivo inválido',
+        text: errorMessage
+      });
+    }
+    
+    var uploadForm = document.getElementById('uploadForm');
+    var fileInput = document.getElementById('formFile');
+    if (fileInput) {
+        fileInput.addEventListener('change', function () {
+            var f = fileInput.files && fileInput.files[0];
+            if (!f) { return; }
+            var name = f.name.toLowerCase();
+            if (!name.endsWith('.xlsx')) {
+                Swal.fire({ icon: 'error', title: 'Formato no permitido', text: 'Solo se permiten archivos .xlsx' });
+                fileInput.value = '';
+                return;
+            }
+            uploadForm.submit();
+        });
+    }
+
+    var btnEnviar = document.getElementById('btnEnviar');
+    if (btnEnviar) {
+        btnEnviar.addEventListener('click', function () {
+            Swal.fire({
+                title: 'Enviando datos...',
+                text: 'Por favor espera mientras guardamos la información.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            fetch('/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Enviado!',
+                        text: data.message
+                    }).then(() => {
+                        window.location.href = '/';
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de red',
+                    text: 'Ocurrió un problema al conectar con el servidor.'
+                });
+            });
+        });
+    }
+  });
+</script>
+{% endblock %}
