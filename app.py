@@ -1,6 +1,7 @@
 import os
 import secrets
 import logging
+import requests
 from pathlib import Path
 from decimal import Decimal
 from datetime import datetime, date
@@ -158,7 +159,44 @@ def send_data():
         db.insert_gas_data(raw_data)
         logging.info("Inserción en HANA completada exitosamente.")
         
-        return jsonify({"success": True, "message": "Datos enviados correctamente."})
+        # Llamada al servicio externo para procesar la información
+        service_url = "https://snbrns-processes-hub-noisy-baboon-ll.cfapps.us10.hana.ondemand.com/snbrns-hub/hana/procedures/sp-snbrs-19"
+        logging.info(f"Iniciando llamada al servicio externo: {service_url}")
+        
+        try:
+            # Usamos POST ya que es un trigger de proceso. 
+            # Se envían parámetros por defecto requeridos por el servicio
+            payload = {
+                "param1": 0,
+                "param2": "trigger_automatico"
+            }
+            logging.info(f"Enviando payload al servicio: {payload}")
+            response = requests.post(service_url, json=payload, timeout=300) 
+            
+            if response.status_code == 200 or response.status_code == 201:
+                logging.info("Llamada al servicio completada exitosamente.")
+                try:
+                    resp_json = response.json()
+                    logging.info(f"Respuesta del servicio: {resp_json}")
+                    
+                    # Validamos el campo 'success' si existe en la respuesta
+                    if resp_json and isinstance(resp_json, dict):
+                         if not resp_json.get('success', True):
+                             error_msg = resp_json.get('message', 'El servicio externo reportó un error.')
+                             logging.warning(f"El servicio respondió con éxito HTTP pero con success=false: {error_msg}")
+                             raise Exception(f"Error en procesamiento externo: {error_msg}")
+                except ValueError:
+                    # Si no es JSON, solo registramos que no se pudo parsear pero seguimos si el status es 200
+                    logging.warning("La respuesta del servicio no es un JSON válido, pero el código de estado es correcto.")
+            else:
+                logging.error(f"Error en el servicio externo. Status: {response.status_code}. Respuesta: {response.text}")
+                raise Exception(f"El servicio de procesamiento falló con código {response.status_code}.")
+                
+        except requests.exceptions.RequestException as req_err:
+            logging.error(f"Excepción de conexión con el servicio externo: {str(req_err)}")
+            raise Exception(f"Error de conexión con el servicio de procesamiento: {str(req_err)}")
+
+        return jsonify({"success": True, "message": "Datos enviados y procesados correctamente."})
     except Exception as e:
         logging.error(f"Error crítico al enviar datos: {str(e)}", exc_info=True)
         return jsonify({"success": False, "message": f"Error al enviar datos: {str(e)}"}), 500
